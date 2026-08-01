@@ -1,15 +1,20 @@
+import sys
 import os
 import disnake
 from disnake.ext import commands
 from dotenv import load_dotenv
+
+# Принудительно кодируем вывод в UTF-8 для корректной работы эмодзи в консоли Windows
+if sys.stdout and hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")
+if sys.stderr and hasattr(sys.stderr, "reconfigure"):
+    sys.stderr.reconfigure(encoding="utf-8")
 
 # Загружаем переменные окружения из .env файла
 load_dotenv()
 
 # 1. КОНФИГУРАЦИЯ И НАСТРОЙКИ
 TOKEN = os.getenv("BOT_TOKEN")
-if not TOKEN:
-    print("ВНИМАНИЕ: Токен BOT_TOKEN не найден в .env файле! Пожалуйста, укажите его.")
 WELCOME_CHANNEL_ID = int(os.getenv("WELCOME_CHANNEL_ID", "1532395109474238495"))
 
 # Интенты
@@ -52,4 +57,7 @@ async def on_member_join(member: disnake.Member):
 
 
 if __name__ == "__main__":
-    bot.run(TOKEN)
+    if not TOKEN:
+        print("ОШИБКА: Токен BOT_TOKEN не найден в .env файле!")
+    else:
+        bot.run(TOKEN)

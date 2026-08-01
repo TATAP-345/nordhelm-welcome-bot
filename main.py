@@ -1,7 +1,12 @@
+import sys
 import os
 import disnake
 from disnake.ext import commands
 from dotenv import load_dotenv
+
+# Настройка UTF-8 вывода для Windows консоли
+if sys.stdout and hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")
 
 load_dotenv()
 
@@ -21,6 +26,12 @@ async def on_ready():
 @bot.event
 async def on_member_join(member: disnake.Member):
     channel = bot.get_channel(WELCOME_CHANNEL_ID)
+    if channel is None:
+        try:
+            channel = await bot.fetch_channel(WELCOME_CHANNEL_ID)
+        except Exception:
+            channel = None
+
     if channel is not None:
         welcome_text = (
             f"Приветствуем, {member.mention}!\n"

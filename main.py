@@ -14,14 +14,21 @@ load_dotenv()
 WELCOME_CHANNEL_ID = 1532395109474238495
 
 intents = disnake.Intents.default()
-intents.members = True          # Важно! Проверь этот тумблер в панели ИМЕННО ЭТОГО бота
+intents.members = True
 intents.message_content = True
 
-bot = commands.Bot(command_prefix="w!", intents=intents)
+# sync_commands=True принудительно регистрирует слэш-команды в Discord
+bot = commands.Bot(
+    command_prefix="w!",
+    intents=intents,
+    sync_commands=True,
+    sync_commands_debug=True
+)
 
 @bot.event
 async def on_ready():
     print(f"ПРИВЕТСТВЕННЫЙ БОТ [{bot.user}] успешно запущен и в сети!")
+    print(f"Зарегистрировано команд: {[cmd.name for cmd in bot.slash_commands]}")
 
 @bot.event
 async def on_member_join(member: disnake.Member):
@@ -57,7 +64,7 @@ async def on_member_join(member: disnake.Member):
 # --- СЛЭШ-КОМАНДА: /сказать ---
 @bot.slash_command(
     name="сказать",
-    description="Отправить сообщение от лица приветственного бота в любой канал (Только Админы)",
+    description="Отправить сообщение от лица бота в любой канал (Только Администраторы)",
     default_member_permissions=disnake.Permissions(administrator=True)
 )
 async def say_slash(
@@ -97,5 +104,4 @@ async def say_prefix(ctx: commands.Context, channel: disnake.TextChannel, *, tex
     except Exception as e:
         await ctx.send(f"❌ Ошибка отправки: {e}", delete_after=5)
 
-# Токен ПЕРВОГО бота (приветственного)
 bot.run(os.getenv('BOT_TOKEN'))

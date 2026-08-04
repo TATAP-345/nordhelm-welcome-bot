@@ -64,7 +64,7 @@ async def on_member_join(member: disnake.Member):
 # --- СЛЭШ-КОМАНДА: /сказать ---
 @bot.slash_command(
     name="сказать",
-    description="Отправить сообщение от лица бота в любой канал (Только Администраторы)",
+    description="Отправить сообщение/объявление с картинкой от лица бота в любой канал (Только Админы)",
     default_member_permissions=disnake.Permissions(administrator=True)
 )
 async def say_slash(
@@ -72,19 +72,39 @@ async def say_slash(
     channel: disnake.TextChannel = commands.Param(description="Канал, куда отправить сообщение"),
     text: str = commands.Param(description="Текст сообщения (поддерживает \\n для переноса строк)"),
     title: str = commands.Param(default=None, description="Заголовок (если нужно отправить цветным embed)"),
+    image_url: str = commands.Param(default=None, description="Прямая ссылка на картинку (https://...)"),
+    file: disnake.Attachment = commands.Param(default=None, description="Прикрепить файл/картинку с компьютера"),
     as_embed: bool = commands.Param(default=False, description="Отправить в виде цветного Embed блока?")
 ):
     formatted_text = text.replace("\\n", "\n")
 
     try:
+        disnake_file = await file.to_file() if file else None
+
         if as_embed or title:
             embed_title = title if title else "📢 Сообщение"
             embed = disnake.Embed(title=embed_title, description=formatted_text, color=disnake.Color.blue())
-            await channel.send(embed=embed)
-        else:
-            await channel.send(formatted_text)
+            
+            if image_url:
+                embed.set_image(url=image_url)
+            elif file and file.content_type and file.content_type.startswith("image/"):
+                embed.set_image(url=f"attachment://{file.filename}")
 
-        await inter.response.send_message(f"✅ Сообщение отправлено от лица бота в {channel.mention}", ephemeral=True)
+            if disnake_file:
+                await channel.send(embed=embed, file=disnake_file)
+            else:
+                await channel.send(embed=embed)
+        else:
+            msg = formatted_text
+            if image_url:
+                msg += f"\n{image_url}"
+
+            if disnake_file:
+                await channel.send(content=msg, file=disnake_file)
+            else:
+                await channel.send(content=msg)
+
+        await inter.response.send_message(f"✅ Сообщение успешно отправлено от лица бота в {channel.mention}", ephemeral=True)
     except disnake.Forbidden:
         await inter.response.send_message(f"❌ У бота нет прав для отправки сообщений в канал {channel.mention}", ephemeral=True)
     except Exception as e:
@@ -93,10 +113,19 @@ async def say_slash(
 # --- ПРЕФИКС-КОМАНДА: w!say или w!сказать ---
 @bot.command(name="сказать", aliases=["say"])
 @commands.has_permissions(administrator=True)
-async def say_prefix(ctx: commands.Context, channel: disnake.TextChannel, *, text: str):
+async def say_prefix(ctx: commands.Context, channel: disnake.TextChannel, *, text: str = ""):
     formatted_text = text.replace("\\n", "\n")
     try:
-        await channel.send(formatted_text)
+        files_to_send = []
+        if ctx.message.attachments:
+            for attachment in ctx.message.attachments:
+                files_to_send.append(await attachment.to_file())
+        
+        if files_to_send:
+            await channel.send(content=formatted_text, files=files_to_send)
+        else:
+            await channel.send(content=formatted_text)
+
         try:
             await ctx.message.delete()
         except Exception:

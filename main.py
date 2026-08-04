@@ -54,5 +54,48 @@ async def on_member_join(member: disnake.Member):
     else:
         print(f"[Ошибка] Канал приветствий {WELCOME_CHANNEL_ID} не найден.")
 
+# --- СЛЭШ-КОМАНДА: /сказать ---
+@bot.slash_command(
+    name="сказать",
+    description="Отправить сообщение от лица приветственного бота в любой канал (Только Админы)",
+    default_member_permissions=disnake.Permissions(administrator=True)
+)
+async def say_slash(
+    inter: disnake.ApplicationCommandInteraction,
+    channel: disnake.TextChannel = commands.Param(description="Канал, куда отправить сообщение"),
+    text: str = commands.Param(description="Текст сообщения (поддерживает \\n для переноса строк)"),
+    title: str = commands.Param(default=None, description="Заголовок (если нужно отправить цветным embed)"),
+    as_embed: bool = commands.Param(default=False, description="Отправить в виде цветного Embed блока?")
+):
+    formatted_text = text.replace("\\n", "\n")
+
+    try:
+        if as_embed or title:
+            embed_title = title if title else "📢 Сообщение"
+            embed = disnake.Embed(title=embed_title, description=formatted_text, color=disnake.Color.blue())
+            await channel.send(embed=embed)
+        else:
+            await channel.send(formatted_text)
+
+        await inter.response.send_message(f"✅ Сообщение отправлено от лица бота в {channel.mention}", ephemeral=True)
+    except disnake.Forbidden:
+        await inter.response.send_message(f"❌ У бота нет прав для отправки сообщений в канал {channel.mention}", ephemeral=True)
+    except Exception as e:
+        await inter.response.send_message(f"❌ Ошибка отправки: `{e}`", ephemeral=True)
+
+# --- ПРЕФИКС-КОМАНДА: w!say или w!сказать ---
+@bot.command(name="сказать", aliases=["say"])
+@commands.has_permissions(administrator=True)
+async def say_prefix(ctx: commands.Context, channel: disnake.TextChannel, *, text: str):
+    formatted_text = text.replace("\\n", "\n")
+    try:
+        await channel.send(formatted_text)
+        try:
+            await ctx.message.delete()
+        except Exception:
+            pass
+    except Exception as e:
+        await ctx.send(f"❌ Ошибка отправки: {e}", delete_after=5)
+
 # Токен ПЕРВОГО бота (приветственного)
 bot.run(os.getenv('BOT_TOKEN'))
